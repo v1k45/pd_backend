@@ -15,8 +15,20 @@ Including another URLconf
 """
 from django.urls import path, include
 from rest_framework import routers
+
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
 from core.views import RiskTypeViewSet
 
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Risk Management API",
+        default_version='v1',
+        description="API for Britecore Product Development Project",
+    ),
+    public=True,
+)
 
 router = routers.DefaultRouter()
 router.register("risk_types", RiskTypeViewSet)
@@ -24,4 +36,6 @@ router.register("risk_types", RiskTypeViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('docs/', schema_view.with_ui('swagger', cache_timeout=0),
+         name='swagger_docs'),
 ]
