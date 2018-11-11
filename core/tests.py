@@ -1,3 +1,5 @@
+import json
+
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -206,35 +208,243 @@ class RiskTypeAPITestCase(APITestCase):
         self.assertEqual(field.options.first().value, "Enum Value 1")
         self.assertEqual(field.options.last().value, "Enum Value 2")
 
-    def test_risk_type_api_put_works_with_valid_data(self):
+
+class RiskAPITestCase(APITestCase):
+    def test_risk_api_post_works_with_valid_data(self):
+        risk_type = RiskType.objects.create(name="Cars")
+        text_field = Field.objects.create(name="Name", risk_type=risk_type,
+                                          field_type=Field.TEXT_FIELD)
+
+        self.assertEqual(risk_type.risks.count(), 0)
+
         post_data = {
-            "name": "Sample Risk Type",
-            "fields": [
-                {"name": "Field Name", "field_type": "text"}
+            "risk_type": risk_type.id,
+            "values": [
+                {
+                    "field_id": text_field.id,
+                    "value": "Hyundai"
+                }
             ]
         }
-        response = self.client.post("/api/risk_types/", post_data,
-                                    format="json")
+
+        response = self.client.post("/api/risks/", post_data, format="json")
         self.assertEqual(response.status_code, 201)
 
-        self.assertEqual(RiskType.objects.count(), 1)
-        risk_type = RiskType.objects.first()
-        self.assertIsNotNone(risk_type)
-        self.assertEqual(risk_type.name, post_data["name"])
+        self.assertEqual(risk_type.risks.count(), 1)
 
-        update_data = {
-            "name": "Updated Risk Type",
-            "description": "Updated description",
-            "fields": [
-                {"name": "Field Name", "field_type": "text"}
+        created_risk = risk_type.risks.first()
+        created_field_value = created_risk.field_values.first()
+
+        self.assertEqual(created_field_value.field.id, text_field.id)
+        self.assertEqual(created_field_value.value, "Hyundai")
+
+    def test_risk_api_post_works_with_all_field_types(self):
+        risk_type = RiskType.objects.create(name="Cars")
+
+        text_field = Field.objects.create(
+            name="Name", risk_type=risk_type, field_type=Field.TEXT_FIELD)
+
+        number_field = Field.objects.create(
+            name="Model No.", risk_type=risk_type,
+            field_type=Field.NUMBER_FIELD)
+
+        date_field = Field.objects.create(
+            name="Purchase date", risk_type=risk_type,
+            field_type=Field.DATE_FIELD)
+
+        option_field = Field.objects.create(
+            name="Car Type", risk_type=risk_type,
+            field_type=Field.ENUM_FIELD)
+
+        option_value_1 = OptionValue.objects.create(value="Type A")
+        option_value_2 = OptionValue.objects.create(value="Type B")
+
+        option_field.options.add(option_value_1)
+        option_field.options.add(option_value_2)
+
+        self.assertEqual(risk_type.risks.count(), 0)
+
+        post_data = {
+            "risk_type": risk_type.id,
+            "values": [
+                {
+                    "field_id": text_field.id,
+                    "value": "Hyundai"
+                },
+                {
+                    "field_id": number_field.id,
+                    "value": 123456,
+                },
+                {
+                    "field_id": date_field.id,
+                    "value": "1970-01-01"
+                },
+                {
+                    "field_id": option_field.id,
+                    "value": option_value_2.id
+                },
             ]
         }
 
-        response = self.client.put("/api/risk_types/%s/" % risk_type.id,
-                                   update_data, format="json")
-        self.assertEqual(response.status_code, 200)
+        response = self.client.post("/api/risks/", post_data, format="json")
+        self.assertEqual(response.status_code, 201)
 
-        self.assertEqual(RiskType.objects.count(), 1)
-        risk_type = RiskType.objects.first()
-        self.assertIsNotNone(risk_type)
-        self.assertEqual(risk_type.name, update_data["name"])
+        self.assertEqual(risk_type.risks.count(), 1)
+
+        created_risk = risk_type.risks.first()
+        field_values = created_risk.field_values.all()
+
+        text_field_value = field_values.get(field__field_type=Field.TEXT_FIELD)
+        self.assertEqual(text_field_value.field.id, text_field.id)
+        self.assertEqual(text_field_value.value, "Hyundai")
+
+        number_field_value = field_values.get(field__field_type=Field.NUMBER_FIELD)  # NOQA
+        self.assertEqual(number_field_value.field.id, number_field.id)
+        self.assertEqual(number_field_value.value, 123456)
+
+        date_field_value = field_values.get(field__field_type=Field.DATE_FIELD)
+        self.assertEqual(date_field_value.field.id, date_field.id)
+        self.assertEqual(str(date_field_value.value), "1970-01-01")
+
+        option_field_value = field_values.get(field__field_type=Field.ENUM_FIELD)  # NOQA
+        self.assertEqual(option_field_value.field.id, option_field.id)
+        self.assertEqual(option_field_value.value.id, option_value_2.id)
+
+    def test_risk_api_post_raises_validation_error_for_invalid_values(self):
+        risk_type = RiskType.objects.create(name="Cars")
+
+        Field.objects.create(name="Name", risk_type=risk_type,
+                             field_type=Field.TEXT_FIELD)
+
+        number_field = Field.objects.create(
+            name="Model No.", risk_type=risk_type,
+            field_type=Field.NUMBER_FIELD)
+
+        date_field = Field.objects.create(
+            name="Purchase date", risk_type=risk_type,
+            field_type=Field.DATE_FIELD)
+
+        option_field = Field.objects.create(
+            name="Car Type", risk_type=risk_type,
+            field_type=Field.ENUM_FIELD)
+
+        option_value_1 = OptionValue.objects.create(value="Type A")
+        option_value_2 = OptionValue.objects.create(value="Type B")
+
+        option_field.options.add(option_value_1)
+        option_field.options.add(option_value_2)
+
+        self.assertEqual(risk_type.risks.count(), 0)
+
+        post_data = {
+            "risk_type": risk_type.id,
+            "values": [
+                {
+                    "field_id": 0,  # A non-existent field
+                    "value": "Some Text"
+                },
+                {
+                    "field_id": number_field.id,
+                    "value": "Definitely not a number",
+                },
+                {
+                    "field_id": date_field.id,
+                    "value": "Invalid date"
+                },
+                {
+                    "field_id": option_field.id,
+                    "value": 0  # A pk that does not exists
+                },
+            ]
+        }
+
+        response = self.client.post("/api/risks/", post_data, format="json")
+        self.assertEqual(response.status_code, 400)
+
+        expected_error_response = {
+            "values": [
+                {
+                    "field_id": ['Invalid pk "0" - object does not exist.']
+                },
+                {
+                    "value": ["A valid integer is required."],
+                },
+                {
+                    "value": ["Date has wrong format. Use one of these formats"
+                              " instead: YYYY-MM-DD."],
+                },
+                {
+                    "value": ['Invalid value. Option value does not exist.']
+                }
+            ]
+        }
+        self.assertEqual(json.loads(response.content), expected_error_response)
+
+    def test_risk_api_post_raises_validation_error_for_missing_fields(self):
+        risk_type = RiskType.objects.create(name="Cars")
+
+        text_field = Field.objects.create(name="Name", risk_type=risk_type,
+                                          field_type=Field.TEXT_FIELD)
+
+        Field.objects.create(name="Model No.", risk_type=risk_type,
+                             field_type=Field.NUMBER_FIELD)
+
+        self.assertEqual(risk_type.risks.count(), 0)
+
+        post_data = {
+            "risk_type": risk_type.id,
+            "values": [
+                {
+                    "field_id": text_field.id,
+                    "value": "Some Text"
+                },
+            ]
+        }
+
+        response = self.client.post("/api/risks/", post_data, format="json")
+        self.assertEqual(response.status_code, 400)
+
+        expected_error_response = {
+            "non_field_errors": [
+                "All fields are required. 'Model No.' fields not found."
+            ]
+        }
+        self.assertEqual(json.loads(response.content), expected_error_response)
+
+    def test_risk_api_post_raises_validation_error_for_duplicate_fields(self):
+        risk_type = RiskType.objects.create(name="Cars")
+
+        text_field = Field.objects.create(name="Name", risk_type=risk_type,
+                                          field_type=Field.TEXT_FIELD)
+
+        number_field = Field.objects.create(
+            name="Model No.", risk_type=risk_type,
+            field_type=Field.NUMBER_FIELD)
+
+        self.assertEqual(risk_type.risks.count(), 0)
+
+        post_data = {
+            "risk_type": risk_type.id,
+            "values": [
+                {
+                    "field_id": text_field.id,
+                    "value": "Some Text"
+                },
+                {
+                    "field_id": number_field.id,
+                    "value": 12345,
+                },
+                {
+                    "field_id": text_field.id,
+                    "value": "Some more text"
+                },
+            ]
+        }
+
+        response = self.client.post("/api/risks/", post_data, format="json")
+        self.assertEqual(response.status_code, 400)
+
+        expected_error_response = {
+            "non_field_errors": ["Duplicate fields are not allowed."]
+        }
+        self.assertEqual(json.loads(response.content), expected_error_response)

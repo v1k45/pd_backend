@@ -19,7 +19,7 @@ from rest_framework import routers
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-from core.views import RiskTypeViewSet
+from core.views import RiskTypeViewSet, RiskViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -32,6 +32,7 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 router.register("risk_types", RiskTypeViewSet)
+router.register("risks", RiskViewSet)
 
 
 urlpatterns = [
