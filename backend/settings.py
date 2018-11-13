@@ -138,7 +138,10 @@ USE_TZ = True
 
 
 # TODO: Only allow from valid frontend origins
-CORS_ORIGIN_ALLOW_ALL = True
+if DEBUG:
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 
 # S3 storage related settings
 if USE_S3:
