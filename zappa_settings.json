@@ -1,0 +1,17 @@
+{
+    "prod": {
+		"aws_region": "us-east-1",
+        "django_settings": "backend.settings",
+        "profile_name": "default",
+        "project_name": "pd-backend",
+        "runtime": "python3.6",
+        "s3_bucket": "zappa-ngibj3gk4",
+        "vpc_config" : {
+            "SubnetIds": ["subnet-2ad5444d", "subnet-8daf0ab3", "subnet-5c094253", "subnet-35cf5d69", "subnet-da507190", "subnet-8fd24ea1"],
+            "SecurityGroupIds": [ "sg-0b994e2329584e181", "sg-2b8b7a6b" ]
+        },
+        "environment_variables": {
+            "ENV_FILE_NAME": ".production.env"
+        }
+    }
+}

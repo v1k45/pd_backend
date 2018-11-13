@@ -11,22 +11,33 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import environ
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False),
+    USE_S3=(bool, False)
+)
+
+# read .env file
+# Optionally support environment dependent .env file
+env.read_env(env.str('ENV_FILE_NAME', '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'p2f)uv-pz!#&_7yu*_ucs#g=516n+!703&4ormw$7qj&lkm9!7'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
+USE_S3 = env('USE_S3')
 
 # Application definition
 
@@ -44,6 +55,10 @@ INSTALLED_APPS = [
 
     'core',
 ]
+
+if USE_S3:
+    INSTALLED_APPS += ('django_s3_storage', )
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -81,10 +96,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    'default': env.db()
 }
 
 
@@ -124,7 +136,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-STATIC_URL = '/static/'
 
 # TODO: Only allow from valid frontend origins
 CORS_ORIGIN_ALLOW_ALL = True
+
+# S3 storage related settings
+if USE_S3:
+    AWS_S3_BUCKET_NAME_STATIC = env("S3_BUCKET_NAME")
+    STATICFILES_STORAGE = "django_s3_storage.storage.StaticS3Storage"
+    AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_S3_BUCKET_NAME_STATIC
+    STATIC_URL = "https://%s/" % AWS_S3_CUSTOM_DOMAIN
+else:
+    STATIC_URL = '/static/'
