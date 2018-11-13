@@ -8,6 +8,11 @@ class OptionValueSerializer(serializers.ModelSerializer):
     class Meta:
         model = OptionValue
         fields = ('id', 'value')
+        extra_kwargs = {
+            'value': {
+                'help_text': 'Option value'
+            }
+        }
 
 
 class FieldSerializer(serializers.ModelSerializer):
@@ -16,6 +21,15 @@ class FieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = Field
         fields = ('id', 'name', 'description', 'field_type', 'options')
+        extra_kwargs = {
+            'field_type': {
+                'help_text': 'Data type of value this field supports.'
+            },
+            'options': {
+                'help_text': 'List of available options for this field.'
+                             ' Only Required when field_type is enum.'
+            },
+        }
 
     def validate(self, data):
         options = data.get('options', [])
@@ -42,7 +56,9 @@ class RiskTypeListSerializer(serializers.ModelSerializer):
 
 
 class RiskTypeSerializer(serializers.ModelSerializer):
-    fields = FieldSerializer(many=True, required=True, allow_empty=False)
+    fields = FieldSerializer(
+        many=True, required=True, allow_empty=False,
+        help_text='List of fields belonging to this Risk Type')
 
     class Meta:
         model = RiskType
@@ -87,10 +103,19 @@ class GenericValueField(serializers.Field):
 
 
 class FieldValueSerializer(serializers.ModelSerializer):
-    field = FieldSerializer(read_only=True)
+    field = FieldSerializer(
+        read_only=True, help_text='Read only list of fields for reference.')
     field_id = serializers.PrimaryKeyRelatedField(
+        help_text='Primary Key ID of field the value belongs to.',
         source='field', queryset=Field.objects.all(), required=True)
-    value = GenericValueField(source="*")
+    value = GenericValueField(
+        source="*", help_text='Actual value for the field.'
+        ' Returns primary key of option if the field_type is enum.'
+        ' The data-type of the value varies based on field_type.')
+
+    class Meta:
+        model = FieldValue
+        fields = ('id', 'field', 'field_id', 'value')
 
     def validate(self, data):
         field = data["field"]
@@ -137,14 +162,21 @@ class FieldValueSerializer(serializers.ModelSerializer):
 
         return data
 
-    class Meta:
-        model = FieldValue
-        fields = ('id', 'field', 'field_id', 'value')
-
 
 class RiskSerializer(serializers.ModelSerializer):
-    values = FieldValueSerializer(source='field_values', many=True,
-                                  allow_empty=False)
+    values = FieldValueSerializer(
+        source='field_values', many=True, allow_empty=False,
+        help_text='List of field_id:value pairs for this risk.'
+        ' All of them are required when creating a new risk object.')
+
+    class Meta:
+        model = Risk
+        fields = ('id', 'risk_type', 'values')
+        extra_kwargs = {
+            'risk_type': {
+                'help_text': 'Primary key ID of risk_type for this risk.'
+            }
+        }
 
     def validate(self, data):
         values = data["field_values"]
@@ -164,10 +196,6 @@ class RiskSerializer(serializers.ModelSerializer):
                 "Duplicate fields are not allowed.")
 
         return data
-
-    class Meta:
-        model = Risk
-        fields = ('id', 'risk_type', 'values')
 
     @transaction.atomic
     def create(self, validated_data):
