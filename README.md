@@ -16,13 +16,17 @@ The risk type is then used as a schema to show a dynamic form to the user based 
 
 ### The API
 
-While the requirements only mentioned of a risk type list and detail API. This project includes APIs to create/view/delete risk types as well as risk objects. Updating resources is unsupported for both APIs.
+While the requirements only mentioned of a risk type list and detail API, this project includes APIs to create/view/delete risk types as well as risk objects. Updating resources is unsupported for both APIs.
 
 The API documentation is generated using docstrings and help text inside code. Swagger is used for documentation UI.
 
 API is live demo at: https://9ijcyflrlc.execute-api.us-east-1.amazonaws.com/prod/api/
+
 API docs: https://9ijcyflrlc.execute-api.us-east-1.amazonaws.com/prod/docs/
-Frontend for interacting with the API (Does not support creating risk types): http://britecore.v1k45.com/
+
+Frontend for interacting with the API: http://britecore.v1k45.com/
+
+Note: Frontend does not support creating risk types.
 
 ### Development setup
 
