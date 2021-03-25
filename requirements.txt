@@ -31,7 +31,7 @@ psycopg2-binary==2.7.6.1
 python-dateutil==2.6.1
 python-slugify==1.2.4
 pytz==2018.7
-PyYAML==3.13
+PyYAML==5.4
 requests==2.20.1
 ruamel.yaml==0.15.77
 s3transfer==0.1.13
